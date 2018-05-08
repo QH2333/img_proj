@@ -15,7 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="源.cpp">
+    <ClCompile Include="approach1.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="approach2.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
