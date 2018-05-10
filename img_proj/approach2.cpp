@@ -1,7 +1,9 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
+#include <cstdlib>
 #include <opencv2/core/core.hpp>  
 #include <opencv2/highgui/highgui.hpp>
+#include <windows.h>
 
 #define IMG_WIDTH   64
 #define IMG_HEIGHT  64
@@ -93,6 +95,7 @@ private:
     posItem* tarPos;
     void freeList(posItem* head);
     void printList(posItem* head);
+    void printBlock();
 public:
     Template(const Block& _block);
     ~Template();
@@ -121,6 +124,17 @@ void Template::printList(posItem * head)
     {
         printf("(%d,%d) ", pTemp->data.x, pTemp->data.y);
         pTemp = pTemp->next;
+    }
+}
+
+void Template::printBlock()
+{
+    for (int i = 0; i < BLOCK_SIZE; i++)
+    {
+        for (int j = 0; j < BLOCK_SIZE; j++)
+        {
+            printf("%d ", data.getVal(i, j));
+        }
     }
 }
 
@@ -176,7 +190,9 @@ void Template::addTargItem(Position * newItem)
 
 void Template::printRelation()
 {
-    printf("Template info:\n");
+    printf("Template info:");
+    printBlock();
+    printf("\n");
     printList(srcPos);
     printf("->");
     printList(tarPos);
@@ -207,6 +223,8 @@ bool getMatrix(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], const char* path);
 bool addSrcBlockToList(List* head, Block* _block, Position* _pos);
 bool addTargBlockToList(List* head, Block* _block, Position* _pos);
 Template* locateTemplate(List* head, Block* _block);
+void Randomize(uchar Matrix[IMG_HEIGHT][IMG_WIDTH]);
+void swapBlock(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int x1, int y1, int x2, int y2);
 
 int main()
 { 
@@ -215,6 +233,8 @@ int main()
 
     getMatrix(Matrix1, "C:\\Users\\qi_an\\OneDrive\\作业\\项目\\small_sample.bmp");
     getMatrix(Matrix2, "C:\\Users\\qi_an\\OneDrive\\作业\\项目\\small_sample.bmp");
+
+    Randomize(Matrix2);
 
     uchar mTemp[2][2] = { 0,0,0,0 };
     Block bTemp(mTemp);
@@ -240,7 +260,6 @@ int main()
         }
     }
 
-    int a;
     head->next->printList();
 
     system("pause");
@@ -311,4 +330,30 @@ bool addTargBlockToList(List* head, Block* _block, Position* _pos)
 {
     locateTemplate(head, _block)->addTargItem(_pos);
     return true;
+}
+
+void Randomize(uchar Matrix[IMG_HEIGHT][IMG_WIDTH])
+{
+    int j;
+    int xBlocks = IMG_HEIGHT / BLOCK_SIZE;
+    int yBlocks = IMG_WIDTH / BLOCK_SIZE;
+    for (int i = 0; i < xBlocks*yBlocks; i++)
+    {
+        j = i + (double)rand() / (RAND_MAX - 0) * (xBlocks*yBlocks - i);
+        swapBlock(Matrix, i / yBlocks, i%yBlocks, j / yBlocks, j%yBlocks);
+    }
+}
+
+void swapBlock(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int x1, int y1, int x2, int y2)
+{
+    uchar temp;
+    for (int i = 0; i < BLOCK_SIZE; i++)
+    {
+        for (int j = 0; j < BLOCK_SIZE; j++)
+        {
+            temp = Matrix[x1 * 2 + i][y1 * 2 + j];
+            Matrix[x1 * 2 + i][y1 * 2 + j] = Matrix[x2 * 2 + i][y2 * 2 + j];
+            Matrix[x2 * 2 + i][y2 * 2 + j] = temp;
+        }
+    }
 }
