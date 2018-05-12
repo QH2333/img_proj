@@ -34,9 +34,10 @@ public:
     Block(const uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos);
     Block(const uchar _matrix[BLOCK_SIZE][BLOCK_SIZE]);
     Block(const Block& _block);
+    void printBlock() const;
+    void printBlockFile(FILE* fp) const;
     uchar getVal(int x, int y)const { return data[x][y]; }
     Block& operator=(const Block& _block);
-    void printBlock() const;
     friend bool operator==(const Block & b1, const Block & b2);
     friend bool operator>(const Block & b1, const Block & b2);
     friend bool operator<(const Block & b1, const Block & b2);
@@ -100,37 +101,53 @@ void Block::printBlock() const
     }
 }
 
-class Template
+void Block::printBlockFile(FILE* fp) const
+{
+    for (int i = 0; i < BLOCK_SIZE; i++)
+    {
+        for (int j = 0; j < BLOCK_SIZE; j++)
+        {
+            fprintf(fp, "%d ", getVal(i, j));
+        }
+    }
+}
+
+class Record
 {
 private:
     posItem* srcPos;
     posItem* tarPos;
     void freeList(posItem* head);
-    void printList(posItem* head);
+    void printList(posItem* head) const;
+    void printListFile(posItem* head, FILE* fp) const;
 public:
-    Template();
-    ~Template();
+    Record();
+    Record(const Record& rec);
+    ~Record();
     void addSrcItem(Position* newItem);
     void addTargItem(Position* newItem);
-    void printRelation();
+    void printRelation() const;
+    void printRelationFile(FILE* fp) const;
+    bool isUnique();
+    int getNumOfPoint();
 };
 
-void Template::freeList(posItem * head)
+void Record::freeList(posItem * head)
 {
     if (head)
     {
-        //posItem *p1 = head;
-        //posItem *p2 = head->next;
-        //while (p2)
-        //{
-        //    p1 = p2;
-        //    p2 = p2->next;
-        //    delete p1;
-        //}
+        posItem *p1 = head;
+        posItem *p2 = head->next;
+        while (p2)
+        {
+            p1 = p2;
+            p2 = p2->next;
+            delete p1;
+        }
     }
 }
 
-void Template::printList(posItem * head)
+void Record::printList(posItem * head) const
 {
     posItem* pTemp = head;
     while (pTemp)
@@ -140,80 +157,105 @@ void Template::printList(posItem * head)
     }
 }
 
-Template::Template()
+void Record::printListFile(posItem* head, FILE* fp) const
+{
+    posItem* pTemp = head;
+    while (pTemp)
+    {
+        fprintf(fp, "(%d,%d) ", pTemp->data.x, pTemp->data.y);
+        pTemp = pTemp->next;
+    }
+}
+
+Record::Record()
 {
     srcPos = nullptr;
     tarPos = nullptr;
 }
 
-Template::~Template()
+Record::~Record()
 {
     freeList(srcPos);
     freeList(tarPos);
 }
 
-void Template::addSrcItem(Position * newItem)
+void Record::addSrcItem(Position * newItem)
 {
     posItem* insert = new posItem();
     insert->data = *newItem;
-    insert->next = nullptr;
-
-    if (srcPos)
-    {
-        posItem* pTemp = srcPos;
-        while (pTemp->next) pTemp = pTemp->next;
-        pTemp->next = insert;
-        insert->next = nullptr;
-    }
-    else
-    {
-        srcPos = insert;
-    }
+    insert->next = srcPos;
+    srcPos = insert;
 }
 
-void Template::addTargItem(Position * newItem)
+void Record::addTargItem(Position * newItem)
 {
     posItem* insert = new posItem();
     insert->data = *newItem;
-    insert->next = nullptr;
-
-    if (tarPos)
-    {
-        posItem* pTemp = tarPos;
-        while (pTemp->next) pTemp = pTemp->next;
-        pTemp->next = insert;
-        insert->next = nullptr;
-    }
-    else
-    {
-        tarPos = insert;
-    }
+    insert->next = tarPos;
+    tarPos = insert;
 }
 
-void Template::printRelation()
+void Record::printRelation() const
 {
     printList(srcPos);
     printf("->");
     printList(tarPos);
 }
 
+void Record::printRelationFile(FILE* fp) const
+{
+    printListFile(srcPos, fp);
+    fprintf(fp, "->");
+    printListFile(tarPos, fp);
+}
+
+bool Record::isUnique()
+{
+    if (srcPos->next == nullptr) return true;
+    else return false;
+}
+
+int Record::getNumOfPoint()
+{
+    int count = 0;
+    posItem* pTemp = srcPos;
+    while (pTemp)
+    {
+        count++;
+        pTemp = pTemp->next;
+    }
+    return count;
+}
+
 bool getMatrix(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], const char* path);
-bool addSrcBlockToList(map<Block, Template> &_map, Block* _block, Position* _pos);
-bool addTargBlockToList(map<Block, Template> &_map, Block* _block, Position* _pos);
+int addSrcBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos);
+int addTargBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos);
 void Randomize(uchar Matrix[IMG_HEIGHT][IMG_WIDTH]);
 void swapBlock(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int x1, int y1, int x2, int y2);
+void copyList(posItem const *srcHead, posItem **desHead);
+void print(map<Block, Record> &_map);
+void printFile(map<Block, Record> &_map);
+void count (map<Block, Record> &_map);
+
+Record::Record(const Record& rec)
+{
+    srcPos = nullptr;
+    tarPos = nullptr;
+    copyList(rec.srcPos, &srcPos);
+    copyList(rec.tarPos, &tarPos);
+}
 
 int main()
 {
     uchar Matrix1[IMG_HEIGHT][IMG_WIDTH];
     uchar Matrix2[IMG_HEIGHT][IMG_WIDTH];
 
-    getMatrix(Matrix1, "C:\\Users\\qi_an\\OneDrive\\作业\\项目\\sample.bmp");
-    getMatrix(Matrix2, "C:\\Users\\qi_an\\OneDrive\\作业\\项目\\sample.bmp");
+    getMatrix(Matrix1, "sample.bmp");
+    getMatrix(Matrix2, "sample.bmp");
 
-    Randomize(Matrix2);
+    //Randomize(Matrix2);
 
-    map<Block, Template> blockMap;
+    map<Block, Record> blockMap;
 
     uchar mTemp[2][2] = { 0,0,0,0 };
     Block bTemp(mTemp);
@@ -238,17 +280,9 @@ int main()
         }
     }
 
-    map < Block, Template > ::iterator iter;
-
-    for (iter = blockMap.begin(); iter != blockMap.end(); iter++)
-    {
-        printf("Template info:");
-        iter->first.printBlock();
-        printf("\n");
-        iter->second.printRelation();
-        printf("\n");
-    }
-
+    //print(blockMap);
+    printFile(blockMap);
+    count(blockMap);
     system("pause");
     return 0;
 }
@@ -307,40 +341,50 @@ bool operator<(const Block & b1, const Block & b2)
     return false;
 }
 
-bool addSrcBlockToList(map<Block, Template> &_map, Block* _block, Position* _pos)
+int addSrcBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos)
 {
-    map < Block, Template > ::iterator iter;
-    Template* _templ;
+    map < Block, Record > ::iterator iter;
+    Record* _templ;
+    //if (_pos->x == 151 && _pos->y == 67)
+    //{
+    //    printf("app");
+    //}
     iter = _map.find(*_block);
     if (iter == _map.end())
     {
-        _templ = new Template;
+        _templ = new Record;
         _templ->addSrcItem(_pos);
-        _map.insert(pair<Block, Template>(*_block, *_templ));
+        _map.insert(pair<Block, Record>(*_block, *_templ));
+        return 1;
     }
     else
     {
         iter->second.addSrcItem(_pos);
+        return 0;
     }
-    return true;
 }
 
-bool addTargBlockToList(map<Block, Template> &_map, Block* _block, Position* _pos)
+int addTargBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos)
 {
-    map < Block, Template > ::iterator iter;
-    Template* _templ;
+    map < Block, Record > ::iterator iter;
+    Record* _templ;
+    //if (_pos->x == 151 && _pos->y == 67)
+    //{
+    //    printf("app");
+    //}
     iter = _map.find(*_block);
     if (iter == _map.end())
     {
-        _templ = new Template;
+        _templ = new Record;
         _templ->addTargItem(_pos);
-        _map.insert(pair<Block, Template>(*_block, *_templ));
+        _map.insert(pair<Block, Record>(*_block, *_templ));
+        return 1;
     }
     else
     {
         iter->second.addTargItem(_pos);
+        return 0;
     }
-    return true;
 }
 
 void Randomize(uchar Matrix[IMG_HEIGHT][IMG_WIDTH])
@@ -367,4 +411,73 @@ void swapBlock(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int x1, int y1, int x2, int 
             Matrix[x2 * 2 + i][y2 * 2 + j] = temp;
         }
     }
+}
+
+void copyList(posItem const *srcHead, posItem **desHead)
+{
+    const posItem* p1 = srcHead;
+    posItem* p2 = *desHead;
+    posItem* newDesHead = p2;
+    if (p1)
+    {
+        p2 = new posItem;
+        newDesHead = p2;
+        p2->next = nullptr;
+        p2->data = p1->data;
+        p1 = p1->next;
+    }
+    while (p1)
+    {
+        p2->next = new posItem;
+        p2->next->next = nullptr;
+        p2 = p2->next;
+        p2->data = p1->data;
+        p1 = p1->next;
+    }
+    *desHead = newDesHead;
+}
+
+void print(map<Block, Record> &_map)
+{
+    map < Block, Record > ::iterator iter;
+    for (iter = _map.begin(); iter != _map.end(); iter++)
+    {
+        printf("Block info:");
+        iter->first.printBlock();
+        printf("\n");
+        iter->second.printRelation();
+        printf("\n");
+    }
+}
+
+void printFile(map<Block, Record> &_map)
+{
+    FILE* fp = fopen("data.txt", "w");
+    map < Block, Record > ::iterator iter;
+    for (iter = _map.begin(); iter != _map.end(); iter++)
+    {
+        fprintf(fp, "Block info:");
+        iter->first.printBlockFile(fp);
+        fprintf(fp, "\n");
+        iter->second.printRelationFile(fp);
+        fprintf(fp, "\n");
+    }
+    fclose(fp);
+}
+
+void count(map<Block, Record> &_map)
+{
+    long varieties = 0;
+    long uniqueBlocks = 0;
+    long equalBlocks = 0;
+    map < Block, Record > ::iterator iter;
+    for (iter = _map.begin(); iter != _map.end(); iter++)
+    {
+        varieties++;
+        if (iter->second.isUnique()) uniqueBlocks++;
+        else equalBlocks += iter->second.getNumOfPoint();
+    }
+    printf("方块种类：%ld\n", varieties);
+    printf("unique块数量：%ld\n", uniqueBlocks);
+    printf("equal块数量：%ld\n", equalBlocks);
 }
