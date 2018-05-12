@@ -253,7 +253,7 @@ int main()
     getMatrix(Matrix1, "sample.bmp");
     getMatrix(Matrix2, "sample.bmp");
 
-    //Randomize(Matrix2);
+    Randomize(Matrix2);
 
     map<Block, Record> blockMap;
 
@@ -345,10 +345,6 @@ int addSrcBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos)
 {
     map < Block, Record > ::iterator iter;
     Record* _templ;
-    //if (_pos->x == 151 && _pos->y == 67)
-    //{
-    //    printf("app");
-    //}
     iter = _map.find(*_block);
     if (iter == _map.end())
     {
@@ -368,16 +364,14 @@ int addTargBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos)
 {
     map < Block, Record > ::iterator iter;
     Record* _templ;
-    //if (_pos->x == 151 && _pos->y == 67)
-    //{
-    //    printf("app");
-    //}
     iter = _map.find(*_block);
     if (iter == _map.end())
     {
-        _templ = new Record;
-        _templ->addTargItem(_pos);
-        _map.insert(pair<Block, Record>(*_block, *_templ));
+        cout << "ERROR:Mismatched block detected!" << endl;
+        cout << "Block info:";
+        _block->printBlock();
+        cout << endl;
+        cout << "Pos info:" << _pos->x << "," << _pos->y << endl;
         return 1;
     }
     else
@@ -392,10 +386,10 @@ void Randomize(uchar Matrix[IMG_HEIGHT][IMG_WIDTH])
     int j;
     int xBlocks = IMG_HEIGHT / BLOCK_SIZE;
     int yBlocks = IMG_WIDTH / BLOCK_SIZE;
-    for (int i = 0; i < xBlocks*yBlocks; i++)
+    for (int i = 0; i < xBlocks * yBlocks; i++)
     {
-        j = i + (double)rand() / (RAND_MAX - 0) * (xBlocks*yBlocks - i);
-        swapBlock(Matrix, i / yBlocks, i%yBlocks, j / yBlocks, j%yBlocks);
+        j = i + (double)rand() / (RAND_MAX - 0) * (xBlocks * yBlocks - 1 - i);
+        swapBlock(Matrix, i / yBlocks, i % yBlocks, j / yBlocks, j % yBlocks);
     }
 }
 
