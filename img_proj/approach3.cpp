@@ -1,17 +1,38 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <cstdlib>
+#include <conio.h>
 #include <map>
 #include <opencv2/core/core.hpp>  
 #include <opencv2/highgui/highgui.hpp>
 #include <windows.h>
 
-#define IMG_WIDTH   512
-#define IMG_HEIGHT  512
-#define BLOCK_SIZE  2
+#define IMG_WIDTH    512
+#define IMG_HEIGHT   512
+#define BLOCK_HEIGHT 2
+#define BLOCK_WIDTH  1
+//#define BLOCK_SIZE  2
 
 using namespace cv;
 using namespace std;
+
+
+
+//void CtrlBlock()
+//{
+//    char select;
+//    cout << "Plz select block size:" << endl;
+//    cout << "1. 1*2" << endl;
+//    cout << "2. 2*1" << endl;
+//    cout << "3. costom suqare" << endl;
+//    select = getch();
+//    switch (select)
+//    {
+//    case '1':static const int BLOCK_HEIGHT = 1; static const int BLOCK_WIDTH = 2; break;
+//    case '2':static const int BLOCK_HEIGHT = 2; static const int BLOCK_WIDTH = 1; break;
+//    case '3':static const int BLOCK_HEIGHT = select - '0'; static const int BLOCK_WIDTH = select - '0'; break;
+//    }
+//}
 
 typedef struct _position
 {
@@ -28,11 +49,11 @@ struct posItem
 class Block
 {
 private:
-    uchar data[BLOCK_SIZE][BLOCK_SIZE];
+    uchar data[BLOCK_HEIGHT][BLOCK_WIDTH];
     Position pos;
 public:
     Block(const uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos);
-    Block(const uchar _matrix[BLOCK_SIZE][BLOCK_SIZE]);
+    Block(const uchar _matrix[BLOCK_HEIGHT][BLOCK_WIDTH]);
     Block(const Block& _block);
     void printBlock() const;
     void printBlockFile(FILE* fp) const;
@@ -45,21 +66,21 @@ public:
 
 Block::Block(const uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos)
 {
-    Position basePos = { _pos.x * 2 ,_pos.y * 2 };
-    for (int i = 0; i < BLOCK_SIZE; i++)
+    Position basePos = { _pos.x * BLOCK_HEIGHT ,_pos.y * BLOCK_WIDTH };
+    for (int i = 0; i <BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j < BLOCK_SIZE; j++)
+        for (int j = 0; j <BLOCK_WIDTH; j++)
         {
             data[i][j] = _matrix[basePos.x + i][basePos.y + j];
         }
     }
 }
 
-Block::Block(const uchar _matrix[BLOCK_SIZE][BLOCK_SIZE])
+Block::Block(const uchar _matrix[BLOCK_HEIGHT][BLOCK_WIDTH])
 {
-    for (int i = 0; i < BLOCK_SIZE; i++)
+    for (int i = 0; i <BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j < BLOCK_SIZE; j++)
+        for (int j = 0; j <BLOCK_WIDTH; j++)
         {
             data[i][j] = _matrix[i][j];
         }
@@ -68,9 +89,9 @@ Block::Block(const uchar _matrix[BLOCK_SIZE][BLOCK_SIZE])
 
 Block::Block(const Block& _block)
 {
-    for (int i = 0; i < BLOCK_SIZE; i++)
+    for (int i = 0; i <BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j < BLOCK_SIZE; j++)
+        for (int j = 0; j <BLOCK_WIDTH; j++)
         {
             data[i][j] = _block.getVal(i, j);
         }
@@ -80,9 +101,9 @@ Block::Block(const Block& _block)
 Block& Block::operator=(const Block& _block)
 {
     if (this == &_block) return *this;
-    for (int i = 0; i < BLOCK_SIZE; i++)
+    for (int i = 0; i <BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j < BLOCK_SIZE; j++)
+        for (int j = 0; j <BLOCK_WIDTH; j++)
         {
             data[i][j] = _block.getVal(i, j);
         }
@@ -92,9 +113,9 @@ Block& Block::operator=(const Block& _block)
 
 void Block::printBlock() const
 {
-    for (int i = 0; i < BLOCK_SIZE; i++)
+    for (int i = 0; i <BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j < BLOCK_SIZE; j++)
+        for (int j = 0; j <BLOCK_WIDTH; j++)
         {
             printf("%d ", getVal(i, j));
         }
@@ -103,9 +124,9 @@ void Block::printBlock() const
 
 void Block::printBlockFile(FILE* fp) const
 {
-    for (int i = 0; i < BLOCK_SIZE; i++)
+    for (int i = 0; i <BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j < BLOCK_SIZE; j++)
+        for (int j = 0; j <BLOCK_WIDTH; j++)
         {
             fprintf(fp, "%d ", getVal(i, j));
         }
@@ -115,7 +136,7 @@ void Block::printBlockFile(FILE* fp) const
 class Record
 {
 private:
-    posItem* srcPos;
+    posItem * srcPos;
     posItem* tarPos;
     void freeList(posItem* head);
     void printList(posItem* head) const;
@@ -235,7 +256,7 @@ void swapBlock(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int x1, int y1, int x2, int 
 void copyList(posItem const *srcHead, posItem **desHead);
 void print(map<Block, Record> &_map);
 void printFile(map<Block, Record> &_map);
-void count (map<Block, Record> &_map);
+void count(map<Block, Record> &_map);
 
 Record::Record(const Record& rec)
 {
@@ -247,6 +268,7 @@ Record::Record(const Record& rec)
 
 int main()
 {
+    //CtrlBlock();
     uchar Matrix1[IMG_HEIGHT][IMG_WIDTH];
     uchar Matrix2[IMG_HEIGHT][IMG_WIDTH];
 
@@ -257,12 +279,12 @@ int main()
 
     map<Block, Record> blockMap;
 
-    uchar mTemp[2][2] = { 0,0,0,0 };
+    uchar mTemp[2][1] = { 0,0 };
     Block bTemp(mTemp);
 
-    for (int i = 0; i < IMG_HEIGHT / BLOCK_SIZE; i++)
+    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j < IMG_WIDTH / BLOCK_SIZE; j++)
+        for (int j = 0; j < IMG_WIDTH / BLOCK_WIDTH; j++)
         {
             Position* pTemp = new Position{ i,j };
             Block* bTemp = new Block(Matrix1, *pTemp);
@@ -270,9 +292,9 @@ int main()
         }
     }
 
-    for (int i = 0; i < IMG_HEIGHT / BLOCK_SIZE; i++)
+    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j < IMG_WIDTH / BLOCK_SIZE; j++)
+        for (int j = 0; j < IMG_WIDTH / BLOCK_WIDTH; j++)
         {
             Position* pTemp = new Position{ i,j };
             Block* bTemp = new Block(Matrix2, *pTemp);
@@ -304,9 +326,9 @@ bool getMatrix(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], const char* path)
 
 bool operator==(const Block & b1, const Block & b2)
 {
-    for (int i = 0; i < BLOCK_SIZE; i++)
+    for (int i = 0; i <BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j < BLOCK_SIZE; j++)
+        for (int j = 0; j <BLOCK_WIDTH; j++)
         {
             if (b1.getVal(i, j) != b2.getVal(i, j)) return false;
         }
@@ -316,9 +338,9 @@ bool operator==(const Block & b1, const Block & b2)
 
 bool operator>(const Block & b1, const Block & b2)
 {
-    for (int i = 0; i < BLOCK_SIZE; i++)
+    for (int i = 0; i <BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j < BLOCK_SIZE; j++)
+        for (int j = 0; j <BLOCK_WIDTH; j++)
         {
             if (b1.getVal(i, j) < b2.getVal(i, j)) return false;
             if (b1.getVal(i, j) > b2.getVal(i, j)) return true;
@@ -330,9 +352,9 @@ bool operator>(const Block & b1, const Block & b2)
 bool operator<(const Block & b1, const Block & b2)
 {
 
-    for (int i = 0; i < BLOCK_SIZE; i++)
+    for (int i = 0; i <BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j < BLOCK_SIZE; j++)
+        for (int j = 0; j <BLOCK_WIDTH; j++)
         {
             if (b1.getVal(i, j) > b2.getVal(i, j)) return false;
             if (b1.getVal(i, j) < b2.getVal(i, j)) return true;
@@ -384,8 +406,8 @@ int addTargBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos)
 void Randomize(uchar Matrix[IMG_HEIGHT][IMG_WIDTH])
 {
     int j;
-    int xBlocks = IMG_HEIGHT / BLOCK_SIZE;
-    int yBlocks = IMG_WIDTH / BLOCK_SIZE;
+    int xBlocks = IMG_HEIGHT / BLOCK_HEIGHT;
+    int yBlocks = IMG_WIDTH / BLOCK_WIDTH;
     for (int i = 0; i < xBlocks * yBlocks; i++)
     {
         j = i + (double)rand() / (RAND_MAX - 0) * (xBlocks * yBlocks - 1 - i);
@@ -396,13 +418,13 @@ void Randomize(uchar Matrix[IMG_HEIGHT][IMG_WIDTH])
 void swapBlock(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int x1, int y1, int x2, int y2)
 {
     uchar temp;
-    for (int i = 0; i < BLOCK_SIZE; i++)
+    for (int i = 0; i <BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j < BLOCK_SIZE; j++)
+        for (int j = 0; j <BLOCK_WIDTH; j++)
         {
-            temp = Matrix[x1 * 2 + i][y1 * 2 + j];
-            Matrix[x1 * 2 + i][y1 * 2 + j] = Matrix[x2 * 2 + i][y2 * 2 + j];
-            Matrix[x2 * 2 + i][y2 * 2 + j] = temp;
+            temp = Matrix[x1 * BLOCK_HEIGHT + i][y1 * BLOCK_WIDTH + j];
+            Matrix[x1 * BLOCK_HEIGHT + i][y1 * BLOCK_WIDTH + j] = Matrix[x2 * BLOCK_HEIGHT + i][y2 * BLOCK_WIDTH + j];
+            Matrix[x2 * BLOCK_HEIGHT + i][y2 * BLOCK_WIDTH + j] = temp;
         }
     }
 }
