@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <conio.h>
+#include <algorithm>
 #include <map>
 #include <opencv2/core/core.hpp>  
 #include <opencv2/highgui/highgui.hpp>
@@ -11,28 +12,9 @@
 #define IMG_HEIGHT   512
 #define BLOCK_HEIGHT 2
 #define BLOCK_WIDTH  1
-//#define BLOCK_SIZE  2
 
 using namespace cv;
 using namespace std;
-
-
-
-//void CtrlBlock()
-//{
-//    char select;
-//    cout << "Plz select block size:" << endl;
-//    cout << "1. 1*2" << endl;
-//    cout << "2. 2*1" << endl;
-//    cout << "3. costom suqare" << endl;
-//    select = getch();
-//    switch (select)
-//    {
-//    case '1':static const int BLOCK_HEIGHT = 1; static const int BLOCK_WIDTH = 2; break;
-//    case '2':static const int BLOCK_HEIGHT = 2; static const int BLOCK_WIDTH = 1; break;
-//    case '3':static const int BLOCK_HEIGHT = select - '0'; static const int BLOCK_WIDTH = select - '0'; break;
-//    }
-//}
 
 typedef struct _position
 {
@@ -58,6 +40,7 @@ public:
     void printBlock() const;
     void printBlockFile(FILE* fp) const;
     uchar getVal(int x, int y)const { return data[x][y]; }
+    void setVal(int x, int y, int _data) { data[x][y] = _data; }
     Block& operator=(const Block& _block);
     friend bool operator==(const Block & b1, const Block & b2);
     friend bool operator>(const Block & b1, const Block & b2);
@@ -251,7 +234,7 @@ int Record::getNumOfPoint()
 bool getMatrix(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], const char* path);
 int addSrcBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos);
 int addTargBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos);
-void Randomize(uchar Matrix[IMG_HEIGHT][IMG_WIDTH]);
+void RandomizePic(uchar Matrix[IMG_HEIGHT][IMG_WIDTH]);
 void swapBlock(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int x1, int y1, int x2, int y2);
 void copyList(posItem const *srcHead, posItem **desHead);
 void print(map<Block, Record> &_map);
@@ -268,14 +251,16 @@ Record::Record(const Record& rec)
 
 int main()
 {
-    //CtrlBlock();
     uchar Matrix1[IMG_HEIGHT][IMG_WIDTH];
     uchar Matrix2[IMG_HEIGHT][IMG_WIDTH];
+
+    //getMatrix(Matrix1, "tiny_sample0.bmp");
+    //getMatrix(Matrix2, "tiny_sample0.bmp");
 
     getMatrix(Matrix1, "sample.bmp");
     getMatrix(Matrix2, "sample.bmp");
 
-    Randomize(Matrix2);
+    RandomizePic(Matrix2);
 
     map<Block, Record> blockMap;
 
@@ -326,60 +311,80 @@ bool getMatrix(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], const char* path)
 
 bool operator==(const Block & b1, const Block & b2)
 {
-    for (int i = 0; i <BLOCK_HEIGHT; i++)
+    int sum1 = 0;
+    int sum2 = 0;
+    for (int i = 0; i < BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j <BLOCK_WIDTH; j++)
+        for (int j = 0; j < BLOCK_WIDTH; j++)
         {
-            if (b1.getVal(i, j) != b2.getVal(i, j)) return false;
+            sum1 += b1.getVal(i, j);
+            sum2 += b2.getVal(i, j);
         }
     }
-    return true;
-}
+    if (sum1 != sum2) return false;
+    else
+    {
+        uchar mat1[BLOCK_HEIGHT*BLOCK_WIDTH];
+        uchar mat2[BLOCK_HEIGHT*BLOCK_WIDTH];
 
-bool newEq(const Block & b1, const Block & b2)
-{
-    int matchCount = 0;
-    int matchFlag[BLOCK_HEIGHT][BLOCK_WIDTH] = { 0 };//标记的二维数组
-    for (int i = 0; i < BLOCK_HEIGHT; i++)
-        for (int j = 0; j < BLOCK_WIDTH; j++)
-            for (int p = 0; i < BLOCK_HEIGHT; i++)
-                for (int q = 0; j < BLOCK_WIDTH; j++)
-                {
-                    if (b1.getVal(i, j) == b2.getVal(p, q) && !matchFlag[p][q])//数值相同 而且 没有被认为相同过
-                    {
-                        matchCount++;
-                        matchFlag[p][q] = 1;
-                        break;//防止把后面相同的都一起标记了
-                    }
-                }
-
-    if (BLOCK_HEIGHT*BLOCK_WIDTH == matchCount)
+        for (int i = 0; i < BLOCK_HEIGHT; i++)
+        {
+            for (int j = 0; j < BLOCK_WIDTH; j++)
+            {
+                mat1[i * BLOCK_WIDTH + j] = b1.getVal(i, j);
+                mat2[i * BLOCK_WIDTH + j] = b2.getVal(i, j);
+            }
+        }
+        sort(mat1, mat1 + BLOCK_HEIGHT * BLOCK_WIDTH - 1);
+        sort(mat2, mat2 + BLOCK_HEIGHT * BLOCK_WIDTH - 1);
+        for (int i = 0; i < BLOCK_HEIGHT*BLOCK_WIDTH; i++)
+        {
+            if (mat1[i] != mat2[i]) return false;
+        }
         return true;
+    }
 }
 
 bool operator>(const Block & b1, const Block & b2)
 {
-    for (int i = 0; i <BLOCK_HEIGHT; i++)
+    uchar mat1[BLOCK_HEIGHT*BLOCK_WIDTH];
+    uchar mat2[BLOCK_HEIGHT*BLOCK_WIDTH];
+    for (int i = 0; i < BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j <BLOCK_WIDTH; j++)
+        for (int j = 0; j < BLOCK_WIDTH; j++)
         {
-            if (b1.getVal(i, j) < b2.getVal(i, j)) return false;
-            if (b1.getVal(i, j) > b2.getVal(i, j)) return true;
+            mat1[i * BLOCK_WIDTH + j] = b1.getVal(i, j);
+            mat2[i * BLOCK_WIDTH + j] = b2.getVal(i, j);
         }
+    }
+    sort(mat1, mat1 + BLOCK_HEIGHT * BLOCK_WIDTH - 1);
+    sort(mat2, mat2 + BLOCK_HEIGHT * BLOCK_WIDTH - 1);
+    for (int i = 0; i < BLOCK_HEIGHT*BLOCK_WIDTH; i++)
+    {
+        if (mat1[i] < mat2[i]) return false;
+        if (mat1[i] > mat2[i]) return true;
     }
     return false;
 }
 
 bool operator<(const Block & b1, const Block & b2)
 {
-
-    for (int i = 0; i <BLOCK_HEIGHT; i++)
+    uchar mat1[BLOCK_HEIGHT*BLOCK_WIDTH];
+    uchar mat2[BLOCK_HEIGHT*BLOCK_WIDTH];
+    for (int i = 0; i < BLOCK_HEIGHT; i++)
     {
-        for (int j = 0; j <BLOCK_WIDTH; j++)
+        for (int j = 0; j < BLOCK_WIDTH; j++)
         {
-            if (b1.getVal(i, j) > b2.getVal(i, j)) return false;
-            if (b1.getVal(i, j) < b2.getVal(i, j)) return true;
+            mat1[i * BLOCK_WIDTH + j] = b1.getVal(i, j);
+            mat2[i * BLOCK_WIDTH + j] = b2.getVal(i, j);
         }
+    }
+    sort(mat1, mat1 + BLOCK_HEIGHT * BLOCK_WIDTH - 1);
+    sort(mat2, mat2 + BLOCK_HEIGHT * BLOCK_WIDTH - 1);
+    for (int i = 0; i < BLOCK_HEIGHT*BLOCK_WIDTH; i++)
+    {
+        if (mat1[i] > mat2[i]) return false;
+        if (mat1[i] < mat2[i]) return true;
     }
     return false;
 }
@@ -424,7 +429,7 @@ int addTargBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos)
     }
 }
 
-void Randomize(uchar Matrix[IMG_HEIGHT][IMG_WIDTH])
+void RandomizePic(uchar Matrix[IMG_HEIGHT][IMG_WIDTH])
 {
     int j;
     int xBlocks = IMG_HEIGHT / BLOCK_HEIGHT;
@@ -433,6 +438,21 @@ void Randomize(uchar Matrix[IMG_HEIGHT][IMG_WIDTH])
     {
         j = i + (double)rand() / (RAND_MAX - 0) * (xBlocks * yBlocks - 1 - i);
         swapBlock(Matrix, i / yBlocks, i % yBlocks, j / yBlocks, j % yBlocks);
+    }
+}
+
+void RandomizeBlock(Block & block)
+{
+    int j;
+    int temp;
+    int xPixels = BLOCK_HEIGHT;
+    int yPixels = BLOCK_WIDTH;
+    for (int i = 0; i < xPixels * yPixels; i++)
+    {
+        j = i + (double)rand() / (RAND_MAX - 0) * (xPixels * yPixels - 1 - i);
+        temp = block.getVal(i / xPixels, i % yPixels);
+        block.setVal(i / xPixels, i % yPixels, block.getVal(j / xPixels, j % yPixels));
+        block.setVal(j / xPixels, j % yPixels, temp);
     }
 }
 
