@@ -336,6 +336,27 @@ bool operator==(const Block & b1, const Block & b2)
     return true;
 }
 
+bool newEq(const Block & b1, const Block & b2)
+{
+    int matchCount = 0;
+    int matchFlag[BLOCK_HEIGHT][BLOCK_WIDTH] = { 0 };//标记的二维数组
+    for (int i = 0; i < BLOCK_HEIGHT; i++)
+        for (int j = 0; j < BLOCK_WIDTH; j++)
+            for (int p = 0; i < BLOCK_HEIGHT; i++)
+                for (int q = 0; j < BLOCK_WIDTH; j++)
+                {
+                    if (b1.getVal(i, j) == b2.getVal(p, q) && !matchFlag[p][q])//数值相同 而且 没有被认为相同过
+                    {
+                        matchCount++;
+                        matchFlag[p][q] = 1;
+                        break;//防止把后面相同的都一起标记了
+                    }
+                }
+
+    if (BLOCK_HEIGHT*BLOCK_WIDTH == matchCount)
+        return true;
+}
+
 bool operator>(const Block & b1, const Block & b2)
 {
     for (int i = 0; i <BLOCK_HEIGHT; i++)
