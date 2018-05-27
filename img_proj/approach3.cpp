@@ -7,11 +7,12 @@
 #include <opencv2/core/core.hpp>  
 #include <opencv2/highgui/highgui.hpp>
 #include <windows.h>
+#include <time.h>
 
-#define IMG_WIDTH    512
-#define IMG_HEIGHT   512
+#define IMG_WIDTH    64
+#define IMG_HEIGHT   64
 #define BLOCK_HEIGHT 2
-#define BLOCK_WIDTH  1
+#define BLOCK_WIDTH  2
 
 using namespace cv;
 using namespace std;
@@ -34,9 +35,12 @@ private:
     uchar data[BLOCK_HEIGHT][BLOCK_WIDTH];
     Position pos;
 public:
+    Block() {}
     Block(const uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos);
     Block(const uchar _matrix[BLOCK_HEIGHT][BLOCK_WIDTH]);
     Block(const Block& _block);
+    void updateBlock(const uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos);
+    void saveBlockToImg(uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos);
     void printBlock() const;
     void printBlockFile(FILE* fp) const;
     uchar getVal(int x, int y)const { return data[x][y]; }
@@ -92,6 +96,30 @@ Block& Block::operator=(const Block& _block)
         }
     }
     return *this;
+}
+
+void Block::updateBlock(const uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos)
+{
+    Position basePos = { _pos.x * BLOCK_HEIGHT ,_pos.y * BLOCK_WIDTH };
+    for (int i = 0; i <BLOCK_HEIGHT; i++)
+    {
+        for (int j = 0; j <BLOCK_WIDTH; j++)
+        {
+            data[i][j] = _matrix[basePos.x + i][basePos.y + j];
+        }
+    }
+}
+
+void Block::saveBlockToImg(uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos)
+{
+    Position basePos = { _pos.x * BLOCK_HEIGHT ,_pos.y * BLOCK_WIDTH };
+    for (int i = 0; i <BLOCK_HEIGHT; i++)
+    {
+        for (int j = 0; j <BLOCK_WIDTH; j++)
+        {
+            _matrix[basePos.x + i][basePos.y + j] = data[i][j];
+        }
+    }
 }
 
 void Block::printBlock() const
@@ -231,10 +259,28 @@ int Record::getNumOfPoint()
     return count;
 }
 
+struct Relation
+{
+    int keyID;
+    Block blockInfo;
+};
+
+struct A
+{
+    int a;
+    int b;
+};
+
+int* keyGen();
+bool compareKey(const A& a1, const A& a2);
 bool getMatrix(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], const char* path);
 int addSrcBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos);
 int addTargBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos);
 void RandomizePic(uchar Matrix[IMG_HEIGHT][IMG_WIDTH]);
+void encryptImg(uchar eMatrix[IMG_HEIGHT][IMG_WIDTH], uchar sMatrix[IMG_HEIGHT][IMG_WIDTH], int* key);
+void decryptImg(uchar sMatrix[IMG_HEIGHT][IMG_WIDTH], uchar eMatrix[IMG_HEIGHT][IMG_WIDTH], int* key);
+Relation* genRelation(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int* key);
+bool compareRelation(const Relation& r1, const Relation& r2);
 void swapBlock(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int x1, int y1, int x2, int y2);
 void copyList(posItem const *srcHead, posItem **desHead);
 void print(map<Block, Record> &_map);
@@ -253,18 +299,27 @@ int main()
 {
     uchar Matrix1[IMG_HEIGHT][IMG_WIDTH];
     uchar Matrix2[IMG_HEIGHT][IMG_WIDTH];
+    uchar Matrix3[IMG_HEIGHT][IMG_WIDTH];
+    uchar Matrix4[IMG_HEIGHT][IMG_WIDTH];
+    int* key = keyGen();
 
     //getMatrix(Matrix1, "tiny_sample0.bmp");
     //getMatrix(Matrix2, "tiny_sample0.bmp");
 
-    getMatrix(Matrix1, "sample.bmp");
-    getMatrix(Matrix2, "sample.bmp");
+    getMatrix(Matrix1, "small_sample.bmp");
+    getMatrix(Matrix2, "small_sample.bmp");
 
-    RandomizePic(Matrix2);
+    //getMatrix(Matrix1, "sample.bmp");
+    //getMatrix(Matrix2, "sample.bmp");
+
+    //RandomizePic(Matrix2);
+
+    encryptImg(Matrix3, Matrix2, key);
+    decryptImg(Matrix4, Matrix3, key);
 
     map<Block, Record> blockMap;
 
-    uchar mTemp[2][1] = { 0,0 };
+    uchar mTemp[2][2] = { 0,0 };
     Block bTemp(mTemp);
 
     for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT; i++)
@@ -272,7 +327,7 @@ int main()
         for (int j = 0; j < IMG_WIDTH / BLOCK_WIDTH; j++)
         {
             Position* pTemp = new Position{ i,j };
-            Block* bTemp = new Block(Matrix1, *pTemp);
+            Block* bTemp = new Block(Matrix2, *pTemp);
             addSrcBlockToList(blockMap, bTemp, pTemp);
         }
     }
@@ -282,7 +337,7 @@ int main()
         for (int j = 0; j < IMG_WIDTH / BLOCK_WIDTH; j++)
         {
             Position* pTemp = new Position{ i,j };
-            Block* bTemp = new Block(Matrix2, *pTemp);
+            Block* bTemp = new Block(Matrix4, *pTemp);
             addTargBlockToList(blockMap, bTemp, pTemp);
         }
     }
@@ -294,14 +349,37 @@ int main()
     return 0;
 }
 
+int* keyGen()
+{
+    A* kTemp = new A[IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH];
+    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH; i++)
+    {
+        kTemp[i].a = rand();
+        kTemp[i].b = i;
+    }
+    sort(kTemp, kTemp + IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH - 1, compareKey);
+    int* key = new int[IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH];
+    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH; i++)
+    {
+        key[i] = kTemp[i].b;
+    }
+    delete[] kTemp;
+    return key;
+}
+
+bool compareKey(const A& a1, const A& a2)
+{
+    return (a1.a > a2.a);
+}
+
 bool getMatrix(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], const char* path)
 {
     Mat img = imread(path, 0);
     uchar* data;
-    for (int i = 0; i < IMG_HEIGHT - 1; i++)
+    for (int i = 0; i < IMG_HEIGHT; i++)
     {
         data = img.ptr<uchar>(i);
-        for (int j = 0; j < IMG_WIDTH - 1; j++)
+        for (int j = 0; j < IMG_WIDTH; j++)
         {
             Matrix[i][j] = data[j];
         }
@@ -537,4 +615,54 @@ void count(map<Block, Record> &_map)
     printf("方块种类：%ld\n", varieties);
     printf("unique块数量：%ld\n", uniqueBlocks);
     printf("equal块数量：%ld\n", equalBlocks);
+}
+
+void encryptImg(uchar eMatrix[IMG_HEIGHT][IMG_WIDTH], uchar sMatrix[IMG_HEIGHT][IMG_WIDTH], int* key)
+{
+    Position temp;
+    Relation* relat = genRelation(sMatrix, key);
+    sort(relat, relat + IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH, compareRelation);
+    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT; i++)
+        for (int j = 0; j < IMG_WIDTH / BLOCK_WIDTH; j++)
+        {
+            temp.x = i;
+            temp.y = j;
+            relat[i * IMG_HEIGHT / BLOCK_HEIGHT + j].blockInfo.saveBlockToImg(eMatrix, temp);
+        }
+    delete[] relat;
+}
+
+bool compareRelation(const Relation& r1, const Relation& r2)
+{
+    return (r1.keyID < r2.keyID);
+}
+
+Relation* genRelation(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int* key)
+{
+    Relation* relat = new Relation[IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH];
+    Position temp;
+    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT; i++)
+        for (int j = 0; j < IMG_WIDTH / BLOCK_WIDTH; j++)
+        {
+            temp.x = i;
+            temp.y = j;
+            relat[i * IMG_HEIGHT / BLOCK_HEIGHT + j].blockInfo.updateBlock(Matrix, temp);
+            relat[i * IMG_HEIGHT / BLOCK_HEIGHT + j].keyID = key[i * IMG_HEIGHT / BLOCK_HEIGHT + j];
+        }
+    return relat;
+}
+
+void decryptImg(uchar sMatrix[IMG_HEIGHT][IMG_WIDTH], uchar eMatrix[IMG_HEIGHT][IMG_WIDTH], int* key)
+{
+    Position pTemp;
+    Block bTemp;
+    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH; i++)
+    {
+        pTemp.x = key[i] / (IMG_HEIGHT / BLOCK_HEIGHT);
+        pTemp.y = key[i] % (IMG_HEIGHT / BLOCK_HEIGHT);
+        bTemp.updateBlock(eMatrix, pTemp);
+        pTemp.x = i / (IMG_HEIGHT / BLOCK_HEIGHT);
+        pTemp.y = i % (IMG_HEIGHT / BLOCK_HEIGHT);
+        bTemp.saveBlockToImg(sMatrix, pTemp);
+    }
 }
