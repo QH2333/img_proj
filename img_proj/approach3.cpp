@@ -9,8 +9,8 @@
 #include <windows.h>
 #include <time.h>
 
-#define IMG_WIDTH    64
-#define IMG_HEIGHT   64
+#define IMG_WIDTH    512
+#define IMG_HEIGHT   512
 #define BLOCK_HEIGHT 2
 #define BLOCK_WIDTH  2
 
@@ -301,16 +301,17 @@ int main()
     uchar Matrix2[IMG_HEIGHT][IMG_WIDTH];
     uchar Matrix3[IMG_HEIGHT][IMG_WIDTH];
     uchar Matrix4[IMG_HEIGHT][IMG_WIDTH];
+
     int* key = keyGen();
 
     //getMatrix(Matrix1, "tiny_sample0.bmp");
     //getMatrix(Matrix2, "tiny_sample0.bmp");
 
-    getMatrix(Matrix1, "small_sample.bmp");
-    getMatrix(Matrix2, "small_sample.bmp");
+    //getMatrix(Matrix1, "small_sample.bmp");
+    //getMatrix(Matrix2, "small_sample.bmp");
 
-    //getMatrix(Matrix1, "sample.bmp");
-    //getMatrix(Matrix2, "sample.bmp");
+    getMatrix(Matrix1, "sample.bmp");
+    getMatrix(Matrix2, "sample.bmp");
 
     //RandomizePic(Matrix2);
 
