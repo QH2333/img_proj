@@ -1,366 +1,91 @@
 #define _CRT_SECURE_NO_WARNINGS
-#include <iostream>
-#include <cstdlib>
-#include <conio.h>
-#include <algorithm>
-#include <map>
-#include <opencv2/core/core.hpp>  
-#include <opencv2/highgui/highgui.hpp>
-#include <windows.h>
-#include <time.h>
+#include "block.hpp"
+#include "record.hpp"
 
-#define IMG_WIDTH    512
-#define IMG_HEIGHT   512
-#define BLOCK_HEIGHT 2
-#define BLOCK_WIDTH  2
-
-using namespace cv;
-using namespace std;
-
-typedef struct _position
-{
-    int x;
-    int y;
-}Position;
-
-struct posItem
-{
-    Position data;
-    posItem* next;
-};
-
-class Block
-{
-private:
-    uchar data[BLOCK_HEIGHT][BLOCK_WIDTH];
-    Position pos;
-public:
-    Block() {}
-    Block(const uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos);
-    Block(const uchar _matrix[BLOCK_HEIGHT][BLOCK_WIDTH]);
-    Block(const Block& _block);
-    void updateBlock(const uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos);
-    void saveBlockToImg(uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos);
-    void printBlock() const;
-    void printBlockFile(FILE* fp) const;
-    uchar getVal(int x, int y)const { return data[x][y]; }
-    void setVal(int x, int y, int _data) { data[x][y] = _data; }
-    Block& operator=(const Block& _block);
-    friend bool operator==(const Block & b1, const Block & b2);
-    friend bool operator>(const Block & b1, const Block & b2);
-    friend bool operator<(const Block & b1, const Block & b2);
-};
-
-Block::Block(const uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos)
-{
-    Position basePos = { _pos.x * BLOCK_HEIGHT ,_pos.y * BLOCK_WIDTH };
-    for (int i = 0; i <BLOCK_HEIGHT; i++)
-    {
-        for (int j = 0; j <BLOCK_WIDTH; j++)
-        {
-            data[i][j] = _matrix[basePos.x + i][basePos.y + j];
-        }
-    }
-}
-
-Block::Block(const uchar _matrix[BLOCK_HEIGHT][BLOCK_WIDTH])
-{
-    for (int i = 0; i <BLOCK_HEIGHT; i++)
-    {
-        for (int j = 0; j <BLOCK_WIDTH; j++)
-        {
-            data[i][j] = _matrix[i][j];
-        }
-    }
-}
-
-Block::Block(const Block& _block)
-{
-    for (int i = 0; i <BLOCK_HEIGHT; i++)
-    {
-        for (int j = 0; j <BLOCK_WIDTH; j++)
-        {
-            data[i][j] = _block.getVal(i, j);
-        }
-    }
-}
-
-Block& Block::operator=(const Block& _block)
-{
-    if (this == &_block) return *this;
-    for (int i = 0; i <BLOCK_HEIGHT; i++)
-    {
-        for (int j = 0; j <BLOCK_WIDTH; j++)
-        {
-            data[i][j] = _block.getVal(i, j);
-        }
-    }
-    return *this;
-}
-
-void Block::updateBlock(const uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos)
-{
-    Position basePos = { _pos.x * BLOCK_HEIGHT ,_pos.y * BLOCK_WIDTH };
-    for (int i = 0; i <BLOCK_HEIGHT; i++)
-    {
-        for (int j = 0; j <BLOCK_WIDTH; j++)
-        {
-            data[i][j] = _matrix[basePos.x + i][basePos.y + j];
-        }
-    }
-}
-
-void Block::saveBlockToImg(uchar _matrix[IMG_WIDTH][IMG_HEIGHT], const Position _pos)
-{
-    Position basePos = { _pos.x * BLOCK_HEIGHT ,_pos.y * BLOCK_WIDTH };
-    for (int i = 0; i <BLOCK_HEIGHT; i++)
-    {
-        for (int j = 0; j <BLOCK_WIDTH; j++)
-        {
-            _matrix[basePos.x + i][basePos.y + j] = data[i][j];
-        }
-    }
-}
-
-void Block::printBlock() const
-{
-    for (int i = 0; i <BLOCK_HEIGHT; i++)
-    {
-        for (int j = 0; j <BLOCK_WIDTH; j++)
-        {
-            printf("%d ", getVal(i, j));
-        }
-    }
-}
-
-void Block::printBlockFile(FILE* fp) const
-{
-    for (int i = 0; i <BLOCK_HEIGHT; i++)
-    {
-        for (int j = 0; j <BLOCK_WIDTH; j++)
-        {
-            fprintf(fp, "%d ", getVal(i, j));
-        }
-    }
-}
-
-class Record
-{
-private:
-    posItem * srcPos;
-    posItem* tarPos;
-    void freeList(posItem* head);
-    void printList(posItem* head) const;
-    void printListFile(posItem* head, FILE* fp) const;
-public:
-    Record();
-    Record(const Record& rec);
-    ~Record();
-    void addSrcItem(Position* newItem);
-    void addTargItem(Position* newItem);
-    void printRelation() const;
-    void printRelationFile(FILE* fp) const;
-    bool isUnique();
-    int getNumOfPoint();
-};
-
-void Record::freeList(posItem * head)
-{
-    if (head)
-    {
-        posItem *p1 = head;
-        posItem *p2 = head->next;
-        while (p2)
-        {
-            p1 = p2;
-            p2 = p2->next;
-            delete p1;
-        }
-    }
-}
-
-void Record::printList(posItem * head) const
-{
-    posItem* pTemp = head;
-    while (pTemp)
-    {
-        printf("(%d,%d) ", pTemp->data.x, pTemp->data.y);
-        pTemp = pTemp->next;
-    }
-}
-
-void Record::printListFile(posItem* head, FILE* fp) const
-{
-    posItem* pTemp = head;
-    while (pTemp)
-    {
-        fprintf(fp, "(%d,%d) ", pTemp->data.x, pTemp->data.y);
-        pTemp = pTemp->next;
-    }
-}
-
-Record::Record()
-{
-    srcPos = nullptr;
-    tarPos = nullptr;
-}
-
-Record::~Record()
-{
-    freeList(srcPos);
-    freeList(tarPos);
-}
-
-void Record::addSrcItem(Position * newItem)
-{
-    posItem* insert = new posItem();
-    insert->data = *newItem;
-    insert->next = srcPos;
-    srcPos = insert;
-}
-
-void Record::addTargItem(Position * newItem)
-{
-    posItem* insert = new posItem();
-    insert->data = *newItem;
-    insert->next = tarPos;
-    tarPos = insert;
-}
-
-void Record::printRelation() const
-{
-    printList(srcPos);
-    printf("->");
-    printList(tarPos);
-}
-
-void Record::printRelationFile(FILE* fp) const
-{
-    printListFile(srcPos, fp);
-    fprintf(fp, "->");
-    printListFile(tarPos, fp);
-}
-
-bool Record::isUnique()
-{
-    if (srcPos->next == nullptr) return true;
-    else return false;
-}
-
-int Record::getNumOfPoint()
-{
-    int count = 0;
-    posItem* pTemp = srcPos;
-    while (pTemp)
-    {
-        count++;
-        pTemp = pTemp->next;
-    }
-    return count;
-}
-
-struct Relation
+struct Relation//将密钥中的每一位都与一个block对应起来，用于解密图像
 {
     int keyID;
     Block blockInfo;
 };
 
-struct A
-{
-    int a;
-    int b;
-};
-
-int* keyGen();
-bool compareKey(const A& a1, const A& a2);
-bool getMatrix(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], const char* path);
-int addSrcBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos);
-int addTargBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos);
-void RandomizePic(uchar Matrix[IMG_HEIGHT][IMG_WIDTH]);
-void encryptImg(uchar eMatrix[IMG_HEIGHT][IMG_WIDTH], uchar sMatrix[IMG_HEIGHT][IMG_WIDTH], int* key);
-void decryptImg(uchar sMatrix[IMG_HEIGHT][IMG_WIDTH], uchar eMatrix[IMG_HEIGHT][IMG_WIDTH], int* key);
-Relation* genRelation(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int* key);
-bool compareRelation(const Relation& r1, const Relation& r2);
-void swapBlock(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int x1, int y1, int x2, int y2);
-void copyList(posItem const *srcHead, posItem **desHead);
-void print(map<Block, Record> &_map);
-void printFile(map<Block, Record> &_map);
-void count(map<Block, Record> &_map);
-
-Record::Record(const Record& rec)
-{
-    srcPos = nullptr;
-    tarPos = nullptr;
-    copyList(rec.srcPos, &srcPos);
-    copyList(rec.tarPos, &tarPos);
-}
+int* keyGen();//生成密钥
+bool compareKey(const A& a1, const A& a2) { return (a1.a > a2.a); }//比较密钥的位，在生成密钥时用作排序函数的回调函数
+bool getMatrix(uchar Matrix[MAT_HEIGHT][MAT_WIDTH], const char* path);//将图像读取至Matrix
+int addSrcBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos);//向关系表中添加一个iS的块
+int addTargBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos);//向关系表中添加一个iE的块
+void RandomizePic(uchar Matrix[MAT_HEIGHT][MAT_WIDTH]);//随机化Matrix
+void encryptImg(uchar eMatrix[MAT_HEIGHT][MAT_WIDTH], uchar sMatrix[MAT_HEIGHT][MAT_WIDTH], int* key);//使用key将sMatrix加密为eMatrix
+void decryptImg(uchar sMatrix[MAT_HEIGHT][MAT_WIDTH], uchar eMatrix[MAT_HEIGHT][MAT_WIDTH], int* key);//使用key将eMatrix解密为sMatrix
+Relation* genRelation(uchar Matrix[MAT_HEIGHT][MAT_WIDTH], int* key);//生成关系，用于解密图像
+bool compareRelation(const Relation& r1, const Relation& r2) { return (r1.keyID < r2.keyID); }//比较关系中每一个Block的密钥位，在解密时用作排序函数的回调函数
+void swapBlock(uchar Matrix[MAT_HEIGHT][MAT_WIDTH], int x1, int y1, int x2, int y2);//交换Matrix中两个坐标上的Block
+void print(map<Block, Record> &_map);//打印信息
+void printFile(map<Block, Record> &_map, const char* path);//打印信息至文件
+void count(map<Block, Record> &_map, const char* path);//计数
 
 int main()
 {
-    uchar Matrix1[IMG_HEIGHT][IMG_WIDTH];
-    uchar Matrix2[IMG_HEIGHT][IMG_WIDTH];
-    uchar Matrix3[IMG_HEIGHT][IMG_WIDTH];
-    uchar Matrix4[IMG_HEIGHT][IMG_WIDTH];
+    uchar Matrix1[MAT_HEIGHT][MAT_WIDTH];
+    uchar Matrix2[MAT_HEIGHT][MAT_WIDTH];
 
-    int* key = keyGen();
+    char* imgPath = new char[100];
+    char* dataPath = new char[100];
 
-    //getMatrix(Matrix1, "tiny_sample0.bmp");
-    //getMatrix(Matrix2, "tiny_sample0.bmp");
-
-    //getMatrix(Matrix1, "small_sample.bmp");
-    //getMatrix(Matrix2, "small_sample.bmp");
-
-    getMatrix(Matrix1, "sample.bmp");
-    getMatrix(Matrix2, "sample.bmp");
-
-    //RandomizePic(Matrix2);
-
-    encryptImg(Matrix3, Matrix2, key);
-    decryptImg(Matrix4, Matrix3, key);
-
-    map<Block, Record> blockMap;
-
-    uchar mTemp[2][2] = { 0,0 };
-    Block bTemp(mTemp);
-
-    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT; i++)
+    for (int i = 1; i <= 12; i++)
     {
-        for (int j = 0; j < IMG_WIDTH / BLOCK_WIDTH; j++)
-        {
-            Position* pTemp = new Position{ i,j };
-            Block* bTemp = new Block(Matrix2, *pTemp);
-            addSrcBlockToList(blockMap, bTemp, pTemp);
-        }
-    }
+        sprintf(imgPath, "test_images\\CImg%d.bmp", i);
+        sprintf(dataPath, "data\\CImg%d with %dx%d partition.txt", i, BLOCK_HEIGHT, BLOCK_WIDTH);
+        
+        getMatrix(Matrix1, imgPath);
+        int* key = keyGen();
+        encryptImg(Matrix2, Matrix1, key);
 
-    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT; i++)
-    {
-        for (int j = 0; j < IMG_WIDTH / BLOCK_WIDTH; j++)
-        {
-            Position* pTemp = new Position{ i,j };
-            Block* bTemp = new Block(Matrix4, *pTemp);
-            addTargBlockToList(blockMap, bTemp, pTemp);
-        }
-    }
+        map<Block, Record> blockMap;
 
-    //print(blockMap);
-    printFile(blockMap);
-    count(blockMap);
+        uchar mTemp[BLOCK_HEIGHT][BLOCK_WIDTH] = { 0 };
+        Block bTemp(mTemp);
+
+        for (int i = 0; i < MAT_HEIGHT / BLOCK_HEIGHT; i++)
+        {
+            for (int j = 0; j < MAT_WIDTH / BLOCK_WIDTH; j++)
+            {
+                Position* pTemp = new Position{ i,j };
+                Block* bTemp = new Block(Matrix1, *pTemp);
+                addSrcBlockToList(blockMap, bTemp, pTemp);
+            }
+        }
+
+        for (int i = 0; i < MAT_HEIGHT / BLOCK_HEIGHT; i++)
+        {
+            for (int j = 0; j < MAT_WIDTH / BLOCK_WIDTH; j++)
+            {
+                Position* pTemp = new Position{ i,j };
+                Block* bTemp = new Block(Matrix2, *pTemp);
+                addTargBlockToList(blockMap, bTemp, pTemp);
+            }
+        }
+        printFile(blockMap, dataPath);
+        sprintf(dataPath, "data\\Block distribution with %dx%d partition.txt", BLOCK_HEIGHT, BLOCK_WIDTH);
+        count(blockMap, dataPath);
+        delete[] key;
+    }
+    delete[] imgPath;
+    delete[] dataPath;
     system("pause");
     return 0;
 }
 
 int* keyGen()
 {
-    A* kTemp = new A[IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH];
-    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH; i++)
+    A* kTemp = new A[MAT_HEIGHT / BLOCK_HEIGHT * MAT_WIDTH / BLOCK_WIDTH];
+    for (int i = 0; i < MAT_HEIGHT / BLOCK_HEIGHT * MAT_WIDTH / BLOCK_WIDTH; i++)
     {
         kTemp[i].a = rand();
         kTemp[i].b = i;
     }
-    sort(kTemp, kTemp + IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH - 1, compareKey);
-    int* key = new int[IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH];
-    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH; i++)
+    sort(kTemp, kTemp + MAT_HEIGHT / BLOCK_HEIGHT * MAT_WIDTH / BLOCK_WIDTH - 1, compareKey);
+    int* key = new int[MAT_HEIGHT / BLOCK_HEIGHT * MAT_WIDTH / BLOCK_WIDTH];
+    for (int i = 0; i < MAT_HEIGHT / BLOCK_HEIGHT * MAT_WIDTH / BLOCK_WIDTH; i++)
     {
         key[i] = kTemp[i].b;
     }
@@ -368,12 +93,8 @@ int* keyGen()
     return key;
 }
 
-bool compareKey(const A& a1, const A& a2)
-{
-    return (a1.a > a2.a);
-}
 
-bool getMatrix(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], const char* path)
+bool getMatrix(uchar Matrix[MAT_HEIGHT][MAT_WIDTH], const char* path)
 {
     Mat img = imread(path, 0);
     uchar* data;
@@ -386,86 +107,6 @@ bool getMatrix(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], const char* path)
         }
     }
     return true;
-}
-
-bool operator==(const Block & b1, const Block & b2)
-{
-    int sum1 = 0;
-    int sum2 = 0;
-    for (int i = 0; i < BLOCK_HEIGHT; i++)
-    {
-        for (int j = 0; j < BLOCK_WIDTH; j++)
-        {
-            sum1 += b1.getVal(i, j);
-            sum2 += b2.getVal(i, j);
-        }
-    }
-    if (sum1 != sum2) return false;
-    else
-    {
-        uchar mat1[BLOCK_HEIGHT*BLOCK_WIDTH];
-        uchar mat2[BLOCK_HEIGHT*BLOCK_WIDTH];
-
-        for (int i = 0; i < BLOCK_HEIGHT; i++)
-        {
-            for (int j = 0; j < BLOCK_WIDTH; j++)
-            {
-                mat1[i * BLOCK_WIDTH + j] = b1.getVal(i, j);
-                mat2[i * BLOCK_WIDTH + j] = b2.getVal(i, j);
-            }
-        }
-        sort(mat1, mat1 + BLOCK_HEIGHT * BLOCK_WIDTH - 1);
-        sort(mat2, mat2 + BLOCK_HEIGHT * BLOCK_WIDTH - 1);
-        for (int i = 0; i < BLOCK_HEIGHT*BLOCK_WIDTH; i++)
-        {
-            if (mat1[i] != mat2[i]) return false;
-        }
-        return true;
-    }
-}
-
-bool operator>(const Block & b1, const Block & b2)
-{
-    uchar mat1[BLOCK_HEIGHT*BLOCK_WIDTH];
-    uchar mat2[BLOCK_HEIGHT*BLOCK_WIDTH];
-    for (int i = 0; i < BLOCK_HEIGHT; i++)
-    {
-        for (int j = 0; j < BLOCK_WIDTH; j++)
-        {
-            mat1[i * BLOCK_WIDTH + j] = b1.getVal(i, j);
-            mat2[i * BLOCK_WIDTH + j] = b2.getVal(i, j);
-        }
-    }
-    sort(mat1, mat1 + BLOCK_HEIGHT * BLOCK_WIDTH - 1);
-    sort(mat2, mat2 + BLOCK_HEIGHT * BLOCK_WIDTH - 1);
-    for (int i = 0; i < BLOCK_HEIGHT*BLOCK_WIDTH; i++)
-    {
-        if (mat1[i] < mat2[i]) return false;
-        if (mat1[i] > mat2[i]) return true;
-    }
-    return false;
-}
-
-bool operator<(const Block & b1, const Block & b2)
-{
-    uchar mat1[BLOCK_HEIGHT*BLOCK_WIDTH];
-    uchar mat2[BLOCK_HEIGHT*BLOCK_WIDTH];
-    for (int i = 0; i < BLOCK_HEIGHT; i++)
-    {
-        for (int j = 0; j < BLOCK_WIDTH; j++)
-        {
-            mat1[i * BLOCK_WIDTH + j] = b1.getVal(i, j);
-            mat2[i * BLOCK_WIDTH + j] = b2.getVal(i, j);
-        }
-    }
-    sort(mat1, mat1 + BLOCK_HEIGHT * BLOCK_WIDTH - 1);
-    sort(mat2, mat2 + BLOCK_HEIGHT * BLOCK_WIDTH - 1);
-    for (int i = 0; i < BLOCK_HEIGHT*BLOCK_WIDTH; i++)
-    {
-        if (mat1[i] > mat2[i]) return false;
-        if (mat1[i] < mat2[i]) return true;
-    }
-    return false;
 }
 
 int addSrcBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos)
@@ -508,11 +149,11 @@ int addTargBlockToList(map<Block, Record> &_map, Block* _block, Position* _pos)
     }
 }
 
-void RandomizePic(uchar Matrix[IMG_HEIGHT][IMG_WIDTH])
+void RandomizePic(uchar Matrix[MAT_HEIGHT][MAT_WIDTH])
 {
     int j;
-    int xBlocks = IMG_HEIGHT / BLOCK_HEIGHT;
-    int yBlocks = IMG_WIDTH / BLOCK_WIDTH;
+    int xBlocks = MAT_HEIGHT / BLOCK_HEIGHT;
+    int yBlocks = MAT_WIDTH / BLOCK_WIDTH;
     for (int i = 0; i < xBlocks * yBlocks; i++)
     {
         j = i + (double)rand() / (RAND_MAX - 0) * (xBlocks * yBlocks - 1 - i);
@@ -535,7 +176,7 @@ void RandomizeBlock(Block & block)
     }
 }
 
-void swapBlock(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int x1, int y1, int x2, int y2)
+void swapBlock(uchar Matrix[MAT_HEIGHT][MAT_WIDTH], int x1, int y1, int x2, int y2)
 {
     uchar temp;
     for (int i = 0; i <BLOCK_HEIGHT; i++)
@@ -547,30 +188,6 @@ void swapBlock(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int x1, int y1, int x2, int 
             Matrix[x2 * BLOCK_HEIGHT + i][y2 * BLOCK_WIDTH + j] = temp;
         }
     }
-}
-
-void copyList(posItem const *srcHead, posItem **desHead)
-{
-    const posItem* p1 = srcHead;
-    posItem* p2 = *desHead;
-    posItem* newDesHead = p2;
-    if (p1)
-    {
-        p2 = new posItem;
-        newDesHead = p2;
-        p2->next = nullptr;
-        p2->data = p1->data;
-        p1 = p1->next;
-    }
-    while (p1)
-    {
-        p2->next = new posItem;
-        p2->next->next = nullptr;
-        p2 = p2->next;
-        p2->data = p1->data;
-        p1 = p1->next;
-    }
-    *desHead = newDesHead;
 }
 
 void print(map<Block, Record> &_map)
@@ -586,84 +203,91 @@ void print(map<Block, Record> &_map)
     }
 }
 
-void printFile(map<Block, Record> &_map)
+void printFile(map<Block, Record> &_map, const char* path)
 {
-    FILE* fp = fopen("data.txt", "w");
+    FILE* fp = fopen(path, "w");
     map < Block, Record > ::iterator iter;
+    fprintf(fp, "图像块\t个数\t位置\t个数\t位置\n");
     for (iter = _map.begin(); iter != _map.end(); iter++)
     {
-        fprintf(fp, "Block info:");
         iter->first.printBlockFile(fp);
-        fprintf(fp, "\n");
+        fprintf(fp, "\t");
+
         iter->second.printRelationFile(fp);
         fprintf(fp, "\n");
     }
     fclose(fp);
 }
 
-void count(map<Block, Record> &_map)
+void count(map<Block, Record> &_map, const char* path)
 {
+    FILE* fp = fopen(path, "a");
+    int pointCount;
     long varieties = 0;
     long uniqueBlocks = 0;
     long equalBlocks = 0;
+    long distribution[13] = {0};
     map < Block, Record > ::iterator iter;
     for (iter = _map.begin(); iter != _map.end(); iter++)
     {
         varieties++;
-        if (iter->second.isUnique()) uniqueBlocks++;
-        else equalBlocks += iter->second.getNumOfPoint();
+        pointCount = iter->second.getNumOfPoint();
+        if (iter->second.isUnique()) uniqueBlocks++; else equalBlocks += pointCount;
+        if (pointCount <= 13) distribution[pointCount - 1]++;
     }
+    for (int i = 0; i < 12; i++)
+    {
+        fprintf(fp, "%d\t", distribution[i]);
+    }
+    fprintf(fp, "%d", distribution[12]);
+    fprintf(fp, "\n");
+    fclose(fp);
     printf("方块种类：%ld\n", varieties);
     printf("unique块数量：%ld\n", uniqueBlocks);
     printf("equal块数量：%ld\n", equalBlocks);
 }
 
-void encryptImg(uchar eMatrix[IMG_HEIGHT][IMG_WIDTH], uchar sMatrix[IMG_HEIGHT][IMG_WIDTH], int* key)
+void encryptImg(uchar eMatrix[MAT_HEIGHT][MAT_WIDTH], uchar sMatrix[MAT_HEIGHT][MAT_WIDTH], int* key)
 {
     Position temp;
     Relation* relat = genRelation(sMatrix, key);
-    sort(relat, relat + IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH, compareRelation);
-    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT; i++)
-        for (int j = 0; j < IMG_WIDTH / BLOCK_WIDTH; j++)
+    sort(relat, relat + MAT_HEIGHT / BLOCK_HEIGHT * MAT_WIDTH / BLOCK_WIDTH, compareRelation);
+    for (int i = 0; i < MAT_HEIGHT / BLOCK_HEIGHT; i++)
+        for (int j = 0; j < MAT_WIDTH / BLOCK_WIDTH; j++)
         {
             temp.x = i;
             temp.y = j;
-            relat[i * IMG_HEIGHT / BLOCK_HEIGHT + j].blockInfo.saveBlockToImg(eMatrix, temp);
+            relat[i * MAT_WIDTH / BLOCK_WIDTH + j].blockInfo.saveBlockToImg(eMatrix, temp);
         }
     delete[] relat;
 }
 
-bool compareRelation(const Relation& r1, const Relation& r2)
+Relation* genRelation(uchar Matrix[MAT_HEIGHT][MAT_WIDTH], int* key)
 {
-    return (r1.keyID < r2.keyID);
-}
-
-Relation* genRelation(uchar Matrix[IMG_HEIGHT][IMG_WIDTH], int* key)
-{
-    Relation* relat = new Relation[IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH];
+    Relation* relat = new Relation[MAT_HEIGHT / BLOCK_HEIGHT * MAT_WIDTH / BLOCK_WIDTH];
     Position temp;
-    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT; i++)
-        for (int j = 0; j < IMG_WIDTH / BLOCK_WIDTH; j++)
+    for (int i = 0; i < MAT_HEIGHT / BLOCK_HEIGHT; i++)
+        for (int j = 0; j < MAT_WIDTH / BLOCK_WIDTH; j++)
         {
             temp.x = i;
             temp.y = j;
-            relat[i * IMG_HEIGHT / BLOCK_HEIGHT + j].blockInfo.updateBlock(Matrix, temp);
-            relat[i * IMG_HEIGHT / BLOCK_HEIGHT + j].keyID = key[i * IMG_HEIGHT / BLOCK_HEIGHT + j];
+            relat[i * MAT_WIDTH / BLOCK_WIDTH + j].blockInfo.updateBlock(Matrix, temp);
+            relat[i * MAT_WIDTH / BLOCK_WIDTH + j].keyID = key[i * MAT_WIDTH / BLOCK_WIDTH + j];
         }
     return relat;
 }
 
-void decryptImg(uchar sMatrix[IMG_HEIGHT][IMG_WIDTH], uchar eMatrix[IMG_HEIGHT][IMG_WIDTH], int* key)
+void decryptImg(uchar sMatrix[MAT_HEIGHT][MAT_WIDTH], uchar eMatrix[MAT_HEIGHT][MAT_WIDTH], int* key)
 {
     Position pTemp;
     Block bTemp;
-    for (int i = 0; i < IMG_HEIGHT / BLOCK_HEIGHT * IMG_WIDTH / BLOCK_WIDTH; i++)
+    for (int i = 0; i < MAT_HEIGHT / BLOCK_HEIGHT * MAT_WIDTH / BLOCK_WIDTH; i++)
     {
-        pTemp.x = key[i] / (IMG_HEIGHT / BLOCK_HEIGHT);
-        pTemp.y = key[i] % (IMG_HEIGHT / BLOCK_HEIGHT);
+        pTemp.x = key[i] / (MAT_HEIGHT / BLOCK_HEIGHT);
+        pTemp.y = key[i] % (MAT_HEIGHT / BLOCK_HEIGHT);
         bTemp.updateBlock(eMatrix, pTemp);
-        pTemp.x = i / (IMG_HEIGHT / BLOCK_HEIGHT);
-        pTemp.y = i % (IMG_HEIGHT / BLOCK_HEIGHT);
+        pTemp.x = i / (MAT_HEIGHT / BLOCK_HEIGHT);
+        pTemp.y = i % (MAT_HEIGHT / BLOCK_HEIGHT);
         bTemp.saveBlockToImg(sMatrix, pTemp);
     }
 }

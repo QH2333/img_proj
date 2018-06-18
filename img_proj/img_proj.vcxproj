@@ -133,6 +133,11 @@
     <ClCompile Include="approach2.cpp" />
     <ClCompile Include="approach3.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="block.hpp" />
+    <ClInclude Include="defs.h" />
+    <ClInclude Include="record.hpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
