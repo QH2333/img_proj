@@ -11,10 +11,10 @@
 
 #define IMG_WIDTH    512
 #define IMG_HEIGHT   512
-#define MAT_WIDTH    513
-#define MAT_HEIGHT   513
-#define BLOCK_HEIGHT 3
-#define BLOCK_WIDTH  3
+#define MAT_WIDTH    512
+#define MAT_HEIGHT   512
+#define BLOCK_HEIGHT 2
+#define BLOCK_WIDTH  2
 
 using namespace cv;
 using namespace std;
